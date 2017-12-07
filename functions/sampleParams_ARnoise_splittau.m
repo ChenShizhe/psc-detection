@@ -6,7 +6,7 @@ if ~isfield(params,'noise_est_subset') || isempty(params.noise_est_subset)
 end
 
 observe = 0;
-observe_freq = 2;
+observe_freq = 250;
 
 %noise level here matters for the proposal distribution (how much it 
 %should trust data for proposals vs how much it should mix based on uniform prior)
@@ -60,7 +60,7 @@ baseline_sweeps = params.baseline_sweeps;
 tau1_sweeps = params.tau1_sweeps;
 tau2_sweeps = params.tau2_sweeps;
 
-maxNbursts = Inf;
+maxNbursts = 15;
 
 indreport=.1:.1:1;
 indreporti=round(num_sweeps*indreport);
@@ -139,7 +139,7 @@ for i = 1:length(Tguess)
 %     tmpi = tmpi_tmp + start_ind - 1;
     start_ind = max(1,floor(tmpi));
     end_ind = min(start_ind + params.a_init_window*2,length(diffY));
-    [local_max,tmpi_tmp] = max(diffY(start_ind:end_ind));
+    [local_max,tmpi_tmp] = max(diffY_(start_ind:end_ind));
     tmpi = tmpi_tmp + start_ind - 1;
     sti_ = [sti tmpi];
     a_init = max(local_max/A + a_std*randn,a_min);
@@ -172,12 +172,22 @@ sti_= sti;
 diffY_= diffY;
 N=length(sti);
 
+max_loops = 0;
+
 %% loop over sweeps to generate samples
 addMoves = [0 0]; %first elem is number successful, second is number total
 dropMoves = [0 0];
 timeMoves = [0 0];
 ampMoves = [0 0];
 tauMoves = [0 0];
+
+phi_flag = zeros(1,num_sweeps+1);
+time_flag = zeros(1,num_sweeps);
+amp_flag = zeros(1,num_sweeps);
+tau1_flag = zeros(1,num_sweeps);
+tau2_flag = zeros(1,num_sweeps);
+base_flag = zeros(1,num_sweeps);
+
 
 if ~params.noise_known
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -202,7 +212,9 @@ if ~params.noise_known
 
 %         keyboard
         sample_phi = 1;
-        while sample_phi
+        loop_count = 0;
+        phi_ = phi;
+        while sample_phi && loop_count < params.max_loops
             phi = [1 mvnrnd(phi_cond_mean,inv(Phi_n))];
 
             phi_poly = -phi;
@@ -210,6 +222,16 @@ if ~params.noise_known
             if all(abs(roots(phi_poly))<1) %check stability
                 sample_phi = 0;
             end
+            loop_count = loop_count + 1;
+        end
+        
+        if ~(loop_count < params.max_loops)
+            phi = phi_;
+            phi_flag(1) = 1;
+        end
+
+        if loop_count > max_loops
+            max_loops = loop_count;
         end
         
     end
@@ -276,12 +298,23 @@ for i = 1:num_sweeps
             tmpi = si(ni);
             tmpi_ = si(ni)+(time_proposal_var*randn); %add in noise 
             % bouncing off edges
-            while tmpi_>nBins || tmpi_<0
+            loop_count = 0;
+            while tmpi_>nBins || tmpi_<0 && loop_count < params.max_loops
                 if tmpi_<0
                     tmpi_ = -(tmpi_);
                 elseif tmpi_>nBins
                     tmpi_ = nBins-(tmpi_-nBins);
                 end
+                loop_count = loop_count + 1;
+            end
+            
+            if ~(loop_count < params.max_loops)
+                tmpi_ = tmpi;
+                time_flag(i) = 1;
+            end            
+            
+            if loop_count > max_loops
+                max_loops = loop_count;
             end
             %if its too close to another burst, reject this move
             if any(abs(tmpi_-si([1:(ni-1) (ni+1):end]))<exclusion_bound)
@@ -329,14 +362,23 @@ for i = 1:num_sweeps
             %sample with random walk proposal
             tmp_a = ai(ni);
             tmp_a_ = tmp_a+(a_std*randn); %with bouncing off min and max
-            while tmp_a_>a_max || tmp_a_<a_min
+            loop_count = 0;
+            while tmp_a_>a_max || tmp_a_<a_min && loop_count < params.max_loops
                 if tmp_a_<a_min
                     tmp_a_ = a_min+(a_min-tmp_a_);
                 elseif tmp_a_>a_max
                     tmp_a_ = a_max-(tmp_a_-a_max);
                 end
+                loop_count = loop_count + 1;
             end
-
+            if ~(loop_count < params.max_loops)
+                tmp_a_ = tmp_a;
+                amp_flag(i) = 1;
+            end 
+            
+            if loop_count > max_loops
+                max_loops = loop_count;
+            end
             %set si_ to set of bursts with the move and pr_ to adjusted calcium and update logC_ to adjusted
             [si_, pr_, diffY_] = removeSpike_ar(si,pr,diffY,efs{ni},ai(ni),taus{ni},trace,si(ni),ni, Dt, A);
             [si_, pr_, diffY_] = addSpike_ar(si_,pr_,diffY_,efs{ni},tmp_a_,taus{ni},trace,si(ni),ni, Dt, A);
@@ -376,14 +418,23 @@ for i = 1:num_sweeps
         %sample with random walk proposal
         tmp_b = baseline;
         tmp_b_ = tmp_b+(b_std*randn); %with bouncing off min and max
-        while tmp_b_>b_max || tmp_b_<b_min
+        loop_count = 0;
+        while tmp_b_>b_max || tmp_b_<b_min && loop_count < params.max_loops
             if tmp_b_<b_min
                 tmp_b_ = b_min+(b_min-tmp_b_);
             elseif tmp_b_>b_max
                 tmp_b_ = b_max-(tmp_b_-b_max);
             end
+            loop_count = loop_count + 1;
         end
+        if ~(loop_count < params.max_loops)
+            tmp_b_ = tmp_b;
+            base_flag(i) = 1;
+        end 
 
+        if loop_count > max_loops
+            max_loops = loop_count;
+        end
         %set si_ to set of bursts with the move and pr_ to adjusted calcium and update logC_ to adjusted
         [pr_, diffY_] = remove_base_ar(pr,diffY,tmp_b,trace,A);   
         [pr_, diffY_] = add_base_ar(pr_,diffY_,tmp_b_,trace,A);
@@ -414,7 +465,9 @@ for i = 1:num_sweeps
     %define removal proposal distribution as uniform over bursts
     %perhaps better is to choose smarter removals.
         for ii = 1:adddrop 
-            %propose a uniform add
+            
+
+	    %propose a uniform add
             %pick a random point
             tmpi = min(nBins)*rand;
             %dont add if we have too many bursts or the proposed new location
@@ -469,6 +522,8 @@ for i = 1:num_sweeps
                 N = length(sti);
             end
 
+            
+            if i > 250
 
             % delete
             if N>0%i.e. we if have at least one spike           
@@ -506,7 +561,7 @@ for i = 1:num_sweeps
                     if observe
                         
     
-    subplot(311)
+            subplot(311)
             plot(pr)
             hold on
             plot(trace)
@@ -523,7 +578,9 @@ for i = 1:num_sweeps
                     %reject - do nothing
                     dropMoves = dropMoves + [0 1];
                 end
+
                 N = length(sti);
+            end
             end
         end
     end
@@ -538,14 +595,24 @@ for i = 1:num_sweeps
             tau_(1) = tau_(1)+(tau1_std*randn); %with bouncing off min and max
             tau_max = min([tau_(2) tau1_max]);
             tau_min = tau1_min;
-            while tau_(1)>tau_max || tau_(1)<tau_min
+            loop_count = 0;
+            while tau_(1)>tau_max || tau_(1)<tau_min && loop_count < params.max_loops
                 if tau_(1) < tau_min
                     tau_(1) = tau_min+(tau_min-tau_(1));
                 elseif tau_(1)>tau_max
                     tau_(1) = tau_max -(tau_(1)-tau_max);
                 end
+                loop_count = loop_count + 1;
+            end 
+            if ~(loop_count < params.max_loops)
+                tau_ = taus{ni};
+                tau1_flag(i) = 1;
             end 
 
+
+            if loop_count > max_loops
+                max_loops = loop_count;
+            end
             ef_ = genEfilt_ar(tau_,event_samples);%exponential filter
 
             %remove all old bumps and replace them with new bumps    
@@ -591,13 +658,23 @@ for i = 1:num_sweeps
             tau_(2) = tau_(2)+(tau2_std*randn);
             tau_min = max([tau_(1) tau2_min]);
             tau_max = tau2_max;
-            while tau_(2)>tau_max || tau_(2)<tau_(1)
+            loop_count = 0;
+            while tau_(2)>tau_max || tau_(2)<tau_(1) && loop_count < params.loop_count
                 if tau_(2)<tau_min
                     tau_(2) = tau_min+(tau_min-tau_(2));
                 elseif tau_(2)>tau_max
                     tau_(2) = tau_max-(tau_(2)-tau_max);
                 end
             end  
+            
+            if ~(loop_count < params.max_loops)
+                tau_ = taus{ni};
+                tau2_flag(i) = 1;
+            end 
+            
+            if loop_count > max_loops
+                max_loops = loop_count;
+            end
             ef_ = genEfilt_ar(tau_,event_samples);%exponential filter
 
             %remove all old bumps and replace them with new bumps    
@@ -654,7 +731,9 @@ for i = 1:num_sweeps
 
 %         keyboard
         sample_phi = 1;
-        while sample_phi
+        loop_count = 0;
+        phi_ = phi;
+        while sample_phi && loop_count < params.max_loops
             phi = [1 mvnrnd(phi_cond_mean,inv(Phi_n))];
 
             phi_poly = -phi;
@@ -662,6 +741,14 @@ for i = 1:num_sweeps
             if all(abs(roots(phi_poly))<1) %check stability
                 sample_phi = 0;
             end
+            loop_count = loop_count + 1;
+        end
+        if ~(loop_count < params.max_loops)
+            phi = phi_;
+            phi_flag(i) = 1;
+        end         
+        if loop_count > max_loops
+            max_loops = loop_count;
         end
         
     end
@@ -727,6 +814,10 @@ for i = 1:num_sweeps
 %     end
 
     objective = [objective -nBins/2*log(NoiseVar) + predAR(diffY,phi,p,1 )/(2*NoiseVar) + N*log(m) - log(factorial(N))];
+    if mod(i,500) == 0
+        i
+        N
+    end
 %     figure(10);
 %     plot(diffY_)
 %     drawnow
@@ -746,6 +837,13 @@ mcmc.dropMoves=dropMoves;
 mcmc.ampMoves=ampMoves;
 mcmc.tauMoves=tauMoves;
 mcmc.N_sto=N_sto;%number of bursts
+mcmc.max_loop_count = max_loops;
+mcmc.phi_flag = phi_flag;
+mcmc.amp_flag = amp_flag;
+mcmc.tau1_flag = tau1_flag;
+mcmc.base_flag = base_flag;
+mcmc.tau2_flag = tau2_flag;
+mcmc.time_flag = time_flag;
 
 if ~isfield(params,'posterior_data_struct') || strcmp(params.posterior_data_struct,'cells')
     posterior.amp=samples_a;

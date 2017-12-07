@@ -8,7 +8,7 @@ end
 
 if ~isfield(params,'cluster')
 
-    params.cluster = 1;
+    params.cluster = 0;
 
 end
 
@@ -43,7 +43,7 @@ end
 % direction/sign of events: upward is 1 (e.g. ipscs, ca imaging), downard is -1
 % (e.g. epscs)
 if ~isfield(params,'event_sign')
-    params.event_sign = -1;
+    params.event_sign = 1;
 end
 
 %% subtraces
@@ -64,12 +64,18 @@ if ~isfield(params,'traces_ind')
 %     params.traces_ind = 1278;
 %     params.traces_ind = 1;
 
+%    params.traces_ind = 1:6;
 %     params.traces_ind = 1:4;
 end
 
 % is this a matrix of traces or a grid array
 if ~isfield(params,'is_grid')
-    params.is_grid = 0;
+    params.is_grid = 1;
+end
+
+if ~isfield(params,'grid_reduce')
+    params.grid_reduce = 0;
+    params.grid_reduce_count = 3;
 end
 
 %% inference params
@@ -98,7 +104,8 @@ end
 % params.kernel = @kernel_function; ignore this
 % min and max for "rise time" in seconds
 if ~isfield(params,'tau1_min')
-    params.tau1_min = .0001;
+%     params.tau1_min = .0001;
+    params.tau1_min = 5e-4;
 end
 % params.tau1_max = 60/20000;
 % params.tau2_min = 75/20000;
@@ -109,14 +116,17 @@ end
 % params.p_spike = 1e-3;
 
 if ~isfield(params,'tau1_max')
-    params.tau1_max = 15/20000;
+%     params.tau1_max = 15/20000;
+    params.tau1_max = 5e-3;
 end
 % min and max for "decay time" in seconds
 if ~isfield(params,'tau2_min')
-    params.tau2_min = .0005;
+%     params.tau2_min = .0005;
+    params.tau2_min = 3e-3;
 end
 if ~isfield(params,'tau2_max')
-    params.tau2_max = 100/20000;
+%     params.tau2_max = 100/20000;
+    params.tau2_max = 4e-2;
 end
 % how long to make kernel in samples
 if ~isfield(params,'event_samples')
@@ -146,7 +156,7 @@ if ~isfield(params,'noise_var_init')
 end
 
 if ~isfield(params, 'noise_known')
-    params.noise_known = 1;
+    params.noise_known = 0;
     if params.noise_known
         params.phi_known = [1.000000000000000, 1.05, -.40];%[1.0 0.78 -0.13];
         params.noise_var_known = 5.0;%4.3;
@@ -278,7 +288,7 @@ if ~isfield(params,'tau2_sweeps')
 end
 
 if ~isfield(params,'a_init_window')
-    params.a_init_window = 50;
+    params.a_init_window = 100;
 end
 
 if ~isfield(params,'exclusion_bound')
@@ -290,6 +300,10 @@ end
 if ~isfield(params,'A')
     params.A = 1;
 end
+
+if ~isfield(params,'max_loops')
+    params.max_loops = 100;
+end
 % params.b
 %% template-matching initialization method
 % if ~isfield(params,'init_method')
@@ -297,7 +311,7 @@ end
     params.init_method.amp_thresh = 5;
     params.init_method.conv_thresh = 1;
     % epsc
-    params.init_method.template_file = 'data/epsc-template.mat';
+    params.init_method.template_file = 'data/ipsc-template.mat';
     % ipsc
 %     params.init_method.template_file = 'data/epsc-template.mat';
     params.init_method.ar_noise_params.sigma_sq = 3.0;
@@ -320,7 +334,7 @@ if ~isfield(params,'traces_filename')
 
 %     else
         params.traces_filename = ...
-            ['data/SOMepsctraces.mat'];
+            ['data/som-mapping-st/detection-test-map_ch1.mat'];
 
 %     end
 end
@@ -341,7 +355,7 @@ end
 %         params.savename = 'all-evoked-ipscs-0000.mat';
 %     else
 
-        params.savename = [params.traces_filename(1:end-4) '-0006.mat'];
+        params.savename = [params.traces_filename(1:end-4) '-0000.mat'];
 %     end
 
 % end

@@ -1453,12 +1453,39 @@ caxis([0 1.5])
 colormap hot
 
 
+%%
 
 
+dates = {'10_7', '10_12', '10_12','10_7','10_7','10_7','10_8','10_8','10_8' , '10_8' , '10_12'}; %
+
+slice_nums = [1 4 4 3 3 3 3 3 5 3 2];
+
+cell_nums =[1 1 1 1 1 1 1 1 1 1 1]; 
+
+tags = {'', '', '', '', '', '', 'cont', 'cont', '', '', ''};% 
+
+% trials = {[6],[1 2 3 4],[3 4 5 6 7 8],[1 4 5 6],[1 2 3],[4 5] ,[1 2]};% third from last
+trials = {[1:3],[1:6],[1:6],[1:6], [7:12], [12:18],[1:3], [4:12],[1:9],[1:6] ,[1:6]};
+tracedir = '/media/shababo/Layover/projects/mapping/data/som-mapping-st/som-big-job-01-dist';
+
+paramdir = '/media/shababo/Layover/projects/mapping/data/som-mapping-st/som-big-job-01-distparams';
+
+% mkdir(tracedir)
+% mkdir(paramdir)
+
+% load('/media/shababo/Layover/projects/mapping/data/som-mapping-st/map_index.mat')
+
+% build_many_jobs(dates(6),slice_nums(6),cell_nums(6),tags(6),trials(6),params,map_index,tracedir,paramdir)
 
 
+exps_to_run = [9:11];
 
-
+for i = 1:length(exps_to_run)
+    this_exp = exps_to_run(i);
+    [glm_out(i),xcorr_images(i),samples_psths(i)] = ...
+        glm_xcorr_all_pairs('som-mapping-big-results-01',dates(this_exp),slice_nums(this_exp),...
+        cell_nums(this_exp),tags(this_exp));
+end
 
 
 

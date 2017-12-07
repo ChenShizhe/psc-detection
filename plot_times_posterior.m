@@ -9,6 +9,7 @@ catch
     load('data/for-paper/all-evoked-ipscs.mat')
 end
 
+load(results_file,'traces')
 % load('/home/shababo/Projects/Mapping/code/psc-detection/data/simulated-data-longer-traces-epsc.mat')
 % load('/home/shababo/Desktop/simulated-data-longer-traces-epsc.mat')
 

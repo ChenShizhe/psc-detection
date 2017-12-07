@@ -5,7 +5,7 @@
 #Torque directives
 #PBS -N psc-detection
 #PBS -W group_list=yetistats
-#PBS -l nodes=1:ppn=12,walltime=08:00:00,mem=16000mb
+#PBS -l nodes=1:ppn=1,walltime=12:00:00,mem=16000mb
 #PBS -M shababo@berkeley.edu
 #PBS -m abe
 #PBS -V
@@ -22,7 +22,7 @@
 #paramfile_base=${param_file##*/}
 #paramfile_base=${paramfile_base%.*}
 #echo $paramfile_base
-matlab -nosplash -nodisplay -nodesktop -r "infer_events_caller('$param_file')" > matlab-output/matoutfile-${PBS_JOBID}
+matlab -nosplash -nodisplay -nodesktop -r "infer_events_caller('$param_file','$PBS_JOBID')" > matlab-output/matoutfile-${PBS_JOBID}
 #-${paramfile_base}
 
 #Command below is to execute Matlab code for Job Array (Example 4) so that each part writes own output

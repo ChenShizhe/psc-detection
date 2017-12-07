@@ -33,6 +33,7 @@ for trial = 1:size(traces,1)
 %     else
 %         this_trial_start = find(stims(trial,:),1,'first') - stim_start;
 %     end
+
     
     traces_to_plot = squeeze(traces(trial,:,:));
     traces_to_plot = traces_to_plot/max(max(traces_to_plot));

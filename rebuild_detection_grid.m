@@ -1,4 +1,10 @@
-function results_grid = rebuild_detection_grid(resultsdir, matchstr, rebuild_file)
+function results_grid = rebuild_detection_grid(resultsdir, matchstr, rebuild_file,varargin)
+
+if ~isempty(varargin) && ~isempty(varargin{1})
+    do_posterior = varargin{1};
+else
+    do_posterior = 1;
+end
 
 filestoload = regexpdir(resultsdir,matchstr);
 
@@ -14,6 +20,8 @@ for i = 1:length(filestoload)
     
 end
 
+size(results_all)
+
 load(rebuild_file)
 
-results_grid = unstack_results(results_all, rebuild_map);
+results_grid = unstack_results(results_all, rebuild_map,do_posterior);
